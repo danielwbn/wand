@@ -485,6 +485,18 @@ class WandServer:
         except Exception:
             logger.warning("error when trying to save config data")
 
+    def get_auto_cal_mode(self):
+        return self.wlm.get_auto_cal_mode()
+
+    def set_auto_cal_mode(self, enable):
+        self.wlm.set_auto_cal_mode(enable)
+
+    def get_auto_cal_settings(self):
+        return self.wlm.get_auto_cal_settings()
+
+    def set_auto_cal_settings(self, period, unit, channel):
+        self.wlm.set_auto_cal_settings(period, unit, channel)
+
 
 def main():
     server = WandServer()

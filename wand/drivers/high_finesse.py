@@ -63,6 +63,14 @@ class WLM:
         lib.GetFrequencyNum.argtypes = [c_long, c_double]
         lib.GetPatternDataNum.restype = c_long
         lib.GetPatternDataNum.argtypes = [c_long, c_long, c_void_p]
+        lib.GetAutoCalMode.restype = c_long
+        lib.GetAutoCalMode.argtypes = [c_long]
+        lib.SetAutoCalMode.restype = c_long
+        lib.SetAutoCalMode.argtypes = [c_long]
+        lib.GetAutoCalSetting.restype = c_long
+        lib.GetAutoCalSetting.argtypes = [c_long, POINTER(c_long), c_long, POINTER(c_long)]
+        lib.SetAutoCalSetting.restype = c_long
+        lib.SetAutoCalSetting.argtypes = [c_long, c_long, c_long, c_long]
 
         try:
             lib.GetAveragingSettingNum.restype = c_long
@@ -492,6 +500,61 @@ class WLM:
 
         data_p = cast(raw_data, POINTER(self._pattern_dtype * self._pattern_count))
         return np.ctypeslib.as_array(data_p.contents)
+
+    def get_auto_cal_mode(self):
+        mode = self.lib.GetAutoCalMode(c_long())
+        logger.debug("GetAutoCalMode() returned %s, which means %s", mode, bool(mode))
+        return bool(mode)
+
+    def set_auto_cal_mode(self, enable):
+        ret = self.lib.SetAutoCalMode(enable)
+        logger.debug("SetAutoCalMode(%s) returned %s", enable, ret)
+        if ret < 0:
+            raise WLMException(
+                f"Unable to set WLM auto calibrate mode to: {enable}, returned {ret}")
+
+    def get_auto_cal_settings(self):
+        period = c_long()
+        unit = c_long()
+        channel = c_long()
+        _ = c_long()
+
+        ret =  self.lib.GetAutoCalSetting(wlm.cmiAutoCalPeriod, byref(period), _, byref(_))
+        logger.debug("GetAutoCalSetting(%s) returned %s, period = %s", wlm.cmiAutoCalPeriod, ret, period.value)
+
+        ret =  self.lib.GetAutoCalSetting(wlm.cmiAutoCalUnit, byref(unit), _, byref(_))
+        logger.debug("GetAutoCalSetting(%s) returned %s, unit = %s", wlm.cmiAutoCalUnit, ret, unit.value)
+
+        ret =  self.lib.GetAutoCalSetting(wlm.cmiAutoCalChannel, byref(channel), _, byref(_))
+        logger.debug("GetAutoCalSetting(%s) returned %s, channel = %s", wlm.cmiAutoCalChannel, ret, channel.value)
+
+        return (period.value, unit.value, channel.value)
+
+    def set_auto_cal_settings(self, period, unit, channel):
+        _ = c_long()
+
+        ret =  self.lib.SetAutoCalSetting(wlm.cmiAutoCalPeriod, period, _, _)
+        logger.debug("SetAutoCalSetting(%s, %s) returned %s", wlm.cmiAutoCalPeriod, period, ret)
+
+        match unit:
+            case "meas":
+                unit = wlm.cACMeasurements
+            case "m":
+                unit = wlm.cACMinutes
+            case "h":
+                unit = wlm.cACHours
+            case "d":
+                unit = wlm.cACDays
+            case "once":
+                unit = wlm.cACOnceOnStart
+            case _:
+                raise WLMException(f"Unknown AutoCal time unit '{unit}'")
+        ret =  self.lib.SetAutoCalSetting(wlm.cmiAutoCalUnit, unit, _, _)
+        logger.debug("SetAutoCalSetting(%s, %s) returned %s", wlm.cmiAutoCalUnit, unit, ret)
+        
+        ret =  self.lib.SetAutoCalSetting(wlm.cmiAutoCalChannel, channel, _, _)
+        logger.debug("SetAutoCalSetting(%s, %s) returned %s", wlm.cmiAutoCalChannel, channel, ret)
+
 
     class Switch:
         """High-Finesse fibre switch controlled by the WLM"""

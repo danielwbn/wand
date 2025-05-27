@@ -345,3 +345,38 @@ class ControlInterface:
 
         self._server.save_config_file()
         self._server.wake_locks[laser].set()
+
+    def get_auto_cal_mode(self):
+        """ Get the status of automatic calibration.
+
+        Returns True if auto cal is on, False if it is off.
+        """
+        return self._server.get_auto_cal_mode()
+
+    def set_auto_cal_mode(self, enable):
+        """ Enable or disable automatic wavemeter calibration.
+        
+        :param enable: bool, True: enable auto cal, False: disable auto cal.
+        """
+        self._server.set_auto_cal_mode(bool(enable))
+
+    def get_auto_cal_settings(self):
+        """ Get settings of automatic calibration.
+
+        Returns a tuple (period, unit, channel), where period is an integer
+        number defined by unit, and channel is the switcher channel used for
+        automatic calibration.
+        """
+        return self._server.get_auto_cal_settings()
+
+    def set_auto_cal_settings(self, period, unit, channel):
+        """ Set settings of automatic calibration.
+
+        :param period: int, its meaning is defined by unit.
+        :param unit: string, "m", "h", "d", "meas" or "once", which stand for
+          minutes, hours, days, measurements and "only calibrate once per start",
+          respectively.
+        :param channel: int, the switcher channel used for
+          automatic calibration.
+        """
+        self._server.set_auto_cal_settings(period, unit, channel)
