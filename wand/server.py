@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 
-from wand.tools import LaserOwnedException, LockException
+from wand.tools import CalibrationException, LaserOwnedException, LockException
 
 logger = logging.getLogger(__name__)
 
@@ -346,22 +346,51 @@ class ControlInterface:
         self._server.save_config_file()
         self._server.wake_locks[laser].set()
 
+    async def calibrate_wlm(self, laser, verify=True, max_dev=None):
+        """Calibrate the wavemeter to a laser's reference frequency
+
+        :param laser: the laser to calibrate the wavemeter to, using this
+          laser's configured reference frequency
+        :param verify: If True, check the laser's current frequency and only
+          calibrate if it is within max_dev of its reference frequency.
+          Raise a CalibrationException if it is not. If False, just calibrate
+          without checks. Defaults to True.
+        :param max_dev: Maximum allowed deviation (Hz) of the laser's current
+          frequency to its reference frequency. Only used if verify = True.
+          Defaults to the laser's configured lock capture range.
+        """
+        self._validate_laser(laser)
+        _validate_bool(verify, "verify")
+        if verify:
+            max_dev = (
+                max_dev or self._server.laser_db.raw_view[laser]["lock_capture_range"]
+            )
+            max_dev = _validate_numeric(max_dev, "max_dev")
+            _, cur_dev, _ = await self.get_freq(laser, priority=10, offset_mode=True)
+            if abs(max_dev) < abs(cur_dev):
+                raise CalibrationException(
+                    f"Laser '{laser}' is further away from its reference frequency "
+                    + f"than allowed: {abs(max_dev)} < {abs(cur_dev)}"
+                )
+
+        self._server.calibrate_wlm(laser)
+
     def get_auto_cal_mode(self):
-        """ Get the status of automatic calibration.
+        """Get the status of automatic calibration.
 
         Returns True if auto cal is on, False if it is off.
         """
         return self._server.get_auto_cal_mode()
 
     def set_auto_cal_mode(self, enable):
-        """ Enable or disable automatic wavemeter calibration.
-        
+        """Enable or disable automatic wavemeter calibration.
+
         :param enable: bool, True: enable auto cal, False: disable auto cal.
         """
         self._server.set_auto_cal_mode(bool(enable))
 
     def get_auto_cal_settings(self):
-        """ Get settings of automatic calibration.
+        """Get settings of automatic calibration.
 
         Returns a tuple (period, unit, channel), where period is an integer
         number defined by unit, and channel is the switcher channel used for
@@ -370,7 +399,7 @@ class ControlInterface:
         return self._server.get_auto_cal_settings()
 
     def set_auto_cal_settings(self, period, unit, channel):
-        """ Set settings of automatic calibration.
+        """Set settings of automatic calibration.
 
         :param period: int, its meaning is defined by unit.
         :param unit: string, "m", "h", "d", "meas" or "once", which stand for
