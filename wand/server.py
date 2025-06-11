@@ -72,6 +72,10 @@ class ControlInterface:
             return True
         return False
 
+    def terminate(self):
+        """Terminate the WAnD server."""
+        self._server.loop.stop()
+
     async def get_freq(
         self,
         laser,
