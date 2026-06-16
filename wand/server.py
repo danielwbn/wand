@@ -8,7 +8,7 @@ import numpy as np
 from wand.tools import LaserOwnedException, LockException
 
 if TYPE_CHECKING:
-    from frontend.wand_server import WandServer
+    from wand.frontend.wand_server import WandServer
 
 logger = logging.getLogger(__name__)
 
